@@ -1,2 +1,2 @@
-# -
+# SOTA (Sephiria Optimal Tablet Arranger)
 세피리아 석판 최적화 배치 자동 계산기
