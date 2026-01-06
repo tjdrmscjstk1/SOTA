@@ -1,0 +1,172 @@
+[{
+    "id": "tablet_ancient_01",
+    "name": "기사도",
+    "image_url": "assets/tablets/ancient_01.png",
+    
+    "properties": {
+      "rotatable": true,
+      "size": [1, 1],
+      "rarity": "일반",
+      "restriction": null
+    },
+  
+    "effects": [
+      { "pos": [-1, 2],  "type": "level_add", "value": 1 }
+    ]
+},
+
+{
+    "id": "tablet_ancient_01",
+    "name": "건조",
+    "image_url": "assets/tablets/ancient_01.png",
+    
+    "properties": {
+      "rotatable": false,
+      "size": [1, 1],
+      "rarity": "일반",
+      "restriction": null
+    },
+  
+    "effects": [
+      { "pos": [0, 1],  "type": "level_add", "value": 1 },  
+      { "pos": [0, -1], "type": "level_add", "value": 1 }
+    ]
+},
+
+{
+    "id": "tablet_ancient_01",
+    "name": "근사",
+    "image_url": "assets/tablets/ancient_01.png",
+    
+    "properties": {
+      "can_rotate": true,
+      "size": [1, 1],
+      "rarity": "일반",
+      "restriction": null
+    },
+  
+    "effects": [
+      { "pos": [0, 1],  "type": "level_add", "value": 1 },  
+      { "pos": [1, 0], "type": "level_add", "value": 1 }
+    ]
+},
+{
+    "id": "tablet_ancient_01",
+    "name": "도래",
+    "image_url": "assets/tablets/ancient_01.png",
+    
+    "properties": {
+      "rotatable": true,
+      "size": [1, 1],
+      "rarity": "일반",
+      "restriction": null
+    },
+  
+    "effects": [
+      { "pos": [0, 1], "type": "level_add", "value": 1 },
+      { "pos": [0, 2], "type": "level_add", "value": 1 },
+      { "pos": [0, -1], "type": "level_add", "value": -1 },
+      { "pos": [0, -2], "type": "level_add", "value": -1 }
+    ]
+},
+{
+  "id": "tablet_ancient_01",
+  "name": "선의",
+  "image_url": "assets/tablets/ancient_01.png",
+  
+  "properties": {
+    "rotatable": false,
+    "size": [1, 1],
+    "rarity": "일반",
+    "restriction": "bottom"
+  },
+
+  "effects": [
+    { "pos": [1, 0], "type": "level_add", "value": 1 },
+    { "pos": [-1, 0], "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tablet_ancient_01",
+  "name": "시선",
+  "image_url": "assets/tablets/ancient_01.png",
+  
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "일반",
+    "restriction": null
+  },
+
+  "effects": [
+    { "pos": [-1, 1], "type": "level_add", "value": 1 },
+    { "pos": [1, -1], "type": "level_add", "value": -1 }
+  ]
+},
+{
+  "id": "tablet_ancient_01",
+  "name": "악수",
+  "image_url": "assets/tablets/ancient_01.png",
+  
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "일반",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [0, 1], "type": "level_add", "value": 1 },
+    { "pos": [0, -1], "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tablet_ancient_01",
+  "name": "운명",
+  "image_url": "assets/tablets/ancient_01.png",
+  
+  "properties": {
+    "rotatable": false,
+    "size": [1, 1],
+    "rarity": "일반",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [0, -1], "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tablet_ancient_01",
+  "name": "재치",
+  "image_url": "assets/tablets/ancient_01.png",
+  
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "일반",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [-1, 1], "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tablet_ancient_01",
+  "name": "착취",
+  "image_url": "assets/tablets/ancient_01.png",
+  
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "일반",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [0, 1], "type": "level_add", "value": 1 },
+    { "pos": [0, -1], "type": "level_add", "value": -1 }
+  ]
+}
+]
