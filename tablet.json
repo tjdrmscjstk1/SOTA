@@ -787,5 +787,95 @@
     { "shape": "top", "type": "level_add", "value": 1 },
     { "shape": "bottom", "type": "level_add", "value": 1 }
   ]
+},
+{
+  "id": "tb_046",
+  "name": "광휘",
+  "image_url": "assets/tablets/sheen.png",
+  
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "전설",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [0, 1], "type": "level_add", "value": 2 },
+    { "pos": [0, -1], "type": "level_add", "value": 2 },
+    { "shape" : "row", "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tb_047",
+  "name": "기적",
+  "image_url": "assets/tablets/miracle.png",
+  
+  "properties": {
+    "rotatable": false,
+    "size": [1, 1],
+    "rarity": "전설",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "shape" : "row", "type": "level_add", "value": 1 },
+    { "shape" : "column", "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tb_048",
+  "name": "백일몽",
+  "image_url": "assets/tablets/daydream.png",
+  
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "전설",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [1, 1], "type": "level_add", "value": 1 },
+    { "pos": [-1, 1], "type": "level_add", "value": 1 },
+    { "pos": [1, -1], "type": "level_add", "value": 1 },
+    { "pos": [-1, -1], "type": "level_add", "value": 1 },
+    { "pos": [1, 2], "type": "level_add", "value": 1 },
+    { "pos": [-1, 2], "type": "level_add", "value": 1 },
+    { "pos": [1, -2], "type": "level_add", "value": 1 },
+    { "pos": [-1, -2], "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tb_049",
+  "name": "압축",
+  "image_url": "assets/tablets/compression.png",
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "전설",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [0, 1], "type": "level_add", "value": 3 },
+    { "pos": [0, 2], "type": "level_add", "value": 2 },
+    { "pos": [0, 3], "type": "level_add", "value": 1 }
+  ]
+},
+{
+  "id": "tb_050",
+  "name": "확신",
+  "image_url": "assets/tablets/certitude.png",
+  "properties": {
+    "rotatable": true,
+    "size": [1, 1],
+    "rarity": "전설",
+    "restriction": null
+  },
+  
+  "effects": [
+    { "pos": [0, 1], "type": "level_add", "value": 5 }
+  ]
 }
 ]
