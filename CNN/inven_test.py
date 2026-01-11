@@ -6,7 +6,7 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 import os
 
 # --- 1. 설정 ---
-SCREENSHOT_PATH = './CNN/test4.png'
+SCREENSHOT_PATH = './CNN/test1.png'
 MODEL_PATH = './CNN/sephiria_item_model.keras'
 CLASSES_PATH = './CNN/classes.pickle'
 IMG_SIZE = 128
@@ -65,74 +65,116 @@ def non_max_suppression(boxes, overlap_thresh=0.3):
 # --- 4. 슬롯 찾기 (하이브리드: 테두리 + 반전 합체) ---
 # [수정 2] 그리드 인식을 위한 '하이브리드' 로직 적용
 def find_inventory_slots(image):
-    print("\n=== 슬롯 검색 (하이브리드 모드) ===")
+    """
+    해상도 적응형 슬롯 검출
+    """
+    print("\n=== 슬롯 검색 (적응형 하이브리드) ===")
     
-    # 공통 설정: 테두리 색상 마스크 만들기
+    img_h, img_w = image.shape[:2]
+    print(f"이미지 크기: {img_w}x{img_h}")
+    
+    # [핵심] 이미지 크기 기반 슬롯 크기 추정
+    # 일반적으로 슬롯은 이미지 너비의 5-12% 정도
+    estimated_slot_size = img_w * 0.08  # 8% 기준
+    
+    min_size = int(estimated_slot_size * 0.7)  # 70%
+    max_size = int(estimated_slot_size * 1.5)  # 150%
+    
+    print(f"슬롯 크기 범위: {min_size} ~ {max_size}px")
+    
+    # 테두리 색상 마스크
     tolerance = 15
     lower = np.array([max(0, c - tolerance) for c in BORDER_COLOR_BGR])
     upper = np.array([min(255, c + tolerance) for c in BORDER_COLOR_BGR])
     
-    # mask: 테두리=255, 배경=0
     mask = cv2.inRange(image, lower, upper)
     
-    # 노이즈 제거 (공통)
-    kernel = np.ones((3, 3), np.uint8)
+    # [적응형] 커널 크기도 이미지 크기에 비례
+    kernel_size = max(3, int(img_w / 500))  # 500px당 1씩 증가
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
     
     candidates = []
 
-    # [방법 A] 테두리(Contour) 기반 검색
+    # [방법 A] 테두리 기반
     edges = cv2.Canny(mask, 50, 150)
     contours_A, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     count_a = 0
     for cnt in contours_A:
         x, y, w, h = cv2.boundingRect(cnt)
-        ar = w / float(h)
-        # 조건: 85~130px 정사각형
-        if 85 < w < 130 and 85 < h < 130 and 0.8 < ar < 1.2:
+        ar = w / float(h) if h > 0 else 0
+        
+        # [적응형] 동적 크기 필터
+        if min_size < w < max_size and min_size < h < max_size and 0.75 < ar < 1.25:
             candidates.append([x, y, w, h])
             count_a += 1
 
-    # [방법 B] 마스크 반전(Inversion) 기반 검색 (이어져 있는 그리드 해결책)
+    # [방법 B] 마스크 반전
     mask_inv = cv2.bitwise_not(mask)
     contours_B, _ = cv2.findContours(mask_inv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     count_b = 0
     for cnt in contours_B:
         x, y, w, h = cv2.boundingRect(cnt)
-        ar = w / float(h)
-        if 85 < w < 130 and 85 < h < 130 and 0.8 < ar < 1.2:
+        ar = w / float(h) if h > 0 else 0
+        
+        # [적응형] 동적 크기 필터
+        if min_size < w < max_size and min_size < h < max_size and 0.75 < ar < 1.25:
             candidates.append([x, y, w, h])
             count_b += 1
 
-    print(f"🔹 방법 A(테두리) 발견: {count_a}개")
-    print(f"🔹 방법 B(반전) 발견: {count_b}개")
+    print(f"🔹 방법 A(테두리): {count_a}개")
+    print(f"🔹 방법 B(반전): {count_b}개")
     
     if len(candidates) == 0:
-        print("⚠️ 슬롯을 못 찾았습니다. BORDER_COLOR_BGR을 확인하세요.")
-        cv2.imwrite('./CNN/debug_mask_border.png', mask) # 디버그용
-        return []
+        print("⚠️ 슬롯을 못 찾았습니다.")
+        
+        # [디버깅] 멀티스케일 시도
+        print("\n멀티스케일 검색 시도...")
+        for scale_factor in [0.6, 0.8, 1.0, 1.2, 1.5]:
+            min_s = int(estimated_slot_size * scale_factor * 0.7)
+            max_s = int(estimated_slot_size * scale_factor * 1.5)
+            
+            temp_candidates = []
+            for cnt in contours_A:
+                x, y, w, h = cv2.boundingRect(cnt)
+                if min_s < w < max_s and min_s < h < max_s:
+                    temp_candidates.append([x, y, w, h])
+            
+            if len(temp_candidates) > 0:
+                print(f"  스케일 {scale_factor:.1f}: {len(temp_candidates)}개 발견 → 사용")
+                candidates = temp_candidates
+                break
+        
+        if len(candidates) == 0:
+            cv2.imwrite('./CNN/debug_mask_border.png', mask)
+            return []
 
-    # [방법 C] 중복 제거 (NMS)
+    # [방법 C] 중복 제거
     final_slots = non_max_suppression(candidates, overlap_thresh=0.3)
     
     if isinstance(final_slots, np.ndarray):
         final_slots = final_slots.tolist()
     
-    # 정렬 (상 -> 하, 좌 -> 우)
-    final_slots = sorted(final_slots, key=lambda s: (s[1] // 20, s[0]))
+    # [적응형] 동적 정렬 간격
+    row_gap = max(10, int(estimated_slot_size * 0.2))  # 슬롯 크기의 20%
+    final_slots = sorted(final_slots, key=lambda s: (s[1] // row_gap, s[0]))
     
-    print(f"✅ 최종 중복 제거 후: {len(final_slots)}개")
+    print(f"✅ 최종: {len(final_slots)}개")
 
     # 디버그 시각화
     vis = image.copy()
     for i, (x, y, w, h) in enumerate(final_slots):
         cv2.rectangle(vis, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        cv2.putText(vis, str(i), (x+5, y+25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        
+        # [적응형] 텍스트 크기
+        font_scale = max(0.3, img_w / 1000)
+        cv2.putText(vis, str(i), (x+5, y+int(h*0.3)), 
+                   cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 255), 2)
     
     cv2.imwrite('./CNN/debug_slots_hybrid.png', vis)
-    print(" -> debug_slots_hybrid.png 저장됨")
+    print("-> debug_slots_hybrid.png 저장")
 
     return final_slots
 

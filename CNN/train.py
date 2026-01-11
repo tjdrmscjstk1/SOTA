@@ -242,11 +242,11 @@ model.compile(optimizer=optimizers.Adam(learning_rate=0.0001),
               metrics=['accuracy'])
 
 # --- 6. 학습 실행 ---
-early_stop = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
 print("학습 시작...")
 history = model.fit(X_train, y_train, 
-                    epochs=15, 
+                    epochs=20, 
                     batch_size=32, 
                     validation_data=(X_val, y_val),
                     callbacks=[early_stop])
