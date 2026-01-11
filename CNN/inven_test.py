@@ -6,9 +6,9 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 import os
 
 # --- 1. 설정 ---
-SCREENSHOT_PATH = 'screenshot.png'
-MODEL_PATH = 'sephiria_item_model.keras'
-CLASSES_PATH = 'classes.pickle'
+SCREENSHOT_PATH = './CNN/test4.png'
+MODEL_PATH = './CNN/sephiria_item_model.keras'
+CLASSES_PATH = './CNN/classes.pickle'
 IMG_SIZE = 128
 
 BORDER_COLOR_BGR = (52, 32, 36)
@@ -17,7 +17,7 @@ os.makedirs('./debug_test_rois', exist_ok=True)
 os.makedirs('./debug_test_processed', exist_ok=True)
 
 # --- 2. 석판 클래스 ---
-def load_tablet_classes(tablets_folder='../assets/tablets'):
+def load_tablet_classes(tablets_folder='./assets/tablets'):
     tablet_classes = set()
     if os.path.exists(tablets_folder):
         for filename in os.listdir(tablets_folder):
@@ -111,7 +111,7 @@ def find_inventory_slots(image):
     
     if len(candidates) == 0:
         print("⚠️ 슬롯을 못 찾았습니다. BORDER_COLOR_BGR을 확인하세요.")
-        cv2.imwrite('./debug_mask_border.png', mask) # 디버그용
+        cv2.imwrite('./CNN/debug_mask_border.png', mask) # 디버그용
         return []
 
     # [방법 C] 중복 제거 (NMS)
@@ -131,7 +131,7 @@ def find_inventory_slots(image):
         cv2.rectangle(vis, (x, y), (x+w, y+h), (0, 255, 0), 2)
         cv2.putText(vis, str(i), (x+5, y+25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
     
-    cv2.imwrite('./debug_slots_hybrid.png', vis)
+    cv2.imwrite('./CNN/debug_slots_hybrid.png', vis)
     print(" -> debug_slots_hybrid.png 저장됨")
 
     return final_slots
@@ -221,10 +221,6 @@ if len(slots) == 0:
 print(f"\n✅ {len(slots)}개 슬롯 발견")
 print("debug_slots_hybrid.png 확인")
 
-response = input("계속하시겠습니까? (y/n): ")
-if response.lower() != 'y':
-    exit()
-
 # 분석 및 시각화
 output_frame = frame.copy()
 
@@ -237,11 +233,11 @@ for idx, (x, y, w, h) in enumerate(slots):
     if roi.size == 0:
         continue
     
-    cv2.imwrite(f'./debug_test_rois/slot_{idx}.png', roi)
+    cv2.imwrite(f'./CNN/debug_test_rois/slot_{idx}.png', roi)
     
     try:
         prediction, roi_final, tta_type = predict_with_tta(model, roi, class_names, tablet_classes)
-        cv2.imwrite(f'./debug_test_processed/slot_{idx}_final.png', 
+        cv2.imwrite(f'./CNN/debug_test_processed/slot_{idx}_final.png', 
                     cv2.cvtColor(roi_final, cv2.COLOR_RGB2BGR))
     except Exception as e:
         print(f"[{idx}] ❌ 오류: {e}")
@@ -264,7 +260,7 @@ for idx, (x, y, w, h) in enumerate(slots):
     cv2.putText(output_frame, label[:12], (x+2, y-5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
-cv2.imwrite('inventory_result.png', output_frame)
+cv2.imwrite('./CNN/inventory_result.png', output_frame)
 print("\n✅ 분석 완료! inventory_result.png 를 확인하세요.")
 
 cv2.imshow('Result', output_frame)

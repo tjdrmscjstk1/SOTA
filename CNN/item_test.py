@@ -4,14 +4,14 @@ import pickle
 from tensorflow.keras.models import load_model
 
 # 설정
-IMG_PATH = '../assets/artifacts/sky_blue_planet.png' # 테스트할 이미지 경로
-MODEL_PATH = 'sephiria_item_model.keras'
-CLASSES_PATH = 'classes.pickle'
+IMG_PATH = './assets/artifacts/sky_blue_planet.png' # 테스트할 이미지 경로
+MODEL_PATH = './CNN/sephiria_item_model.keras'
+CLASSES_PATH = './CNN/classes.pickle'
 IMG_SIZE = 128
 
 # 로드
 model = load_model(MODEL_PATH)
-with open(CLASSES_PATH, 'rb') as f:
+with open('./CNN/classes.pickle', 'rb') as f:
     classes = pickle.load(f)
 
 # 이미지 읽기

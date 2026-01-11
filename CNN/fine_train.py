@@ -11,16 +11,16 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.applications import MobileNetV2
 
 # --- 1. 설정 ---
-BASE_PATH = '../assets'
+BASE_PATH = './assets'
 IMG_SIZE = 128
 VALID_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp')
 AUGMENT_COUNT = 100
 
 # [수정] 배경을 이미지 파일로 변경
 FOLDER_CONFIG = {
-    'artifacts': './slot_artifacts.png',
-    'tablets': './slot_tablets.png',
-    'empty': './slot_empty.png'
+    'artifacts': './CNN/slot_artifacts.png',
+    'tablets': './CNN/slot_tablets.png',
+    'empty': './CNN/slot_empty.png'
 }
 
 # --- 2. 배경 이미지 로드 및 캐싱 ---
@@ -191,7 +191,7 @@ le = LabelEncoder()
 labels_enc = le.fit_transform(labels)
 labels_onehot = to_categorical(labels_enc)
 
-with open('classes.pickle', 'wb') as f:
+with open('./CNN/classes.pickle', 'wb') as f:
     pickle.dump(le.classes_, f)
 
 # 석판 클래스도 저장
@@ -203,7 +203,7 @@ if os.path.exists(tablets_folder):
             class_name = os.path.splitext(filename)[0]
             tablet_classes.append(class_name)
 
-with open('tablet_classes.pickle', 'wb') as f:
+with open('./CNN/tablet_classes.pickle', 'wb') as f:
     pickle.dump(tablet_classes, f)
 print(f"석판 클래스 {len(tablet_classes)}개 저장")
 
@@ -345,16 +345,16 @@ history2 = model.fit(
 print(f"✅ 2단계 완료 (최고 검증 정확도: {max(history2.history['val_accuracy'])*100:.2f}%)")
 
 # --- 10. 최종 모델 저장 ---
-model.save('sephiria_item_model.keras')
+model.save('./CNN/sephiria_item_model.keras')
 print("\n" + "=" * 60)
 print("학습 완료!")
 print("=" * 60)
 print("저장된 파일:")
-print("  - sephiria_item_model.keras (최종 모델)")
-print("  - best_model_stage1.keras (1단계 최고 모델)")
-print("  - best_model_stage2.keras (2단계 최고 모델)")
-print("  - classes.pickle")
-print("  - tablet_classes.pickle")
+print("  - ./CNN/sephiria_item_model.keras (최종 모델)")
+print("  - ./CNN/best_model_stage1.keras (1단계 최고 모델)")
+print("  - ./CNN/best_model_stage2.keras (2단계 최고 모델)")
+print("  - ./CNN/classes.pickle")
+print("  - ./CNN/tablet_classes.pickle")
 
 # --- 11. 학습 곡선 시각화 ---
 import matplotlib.pyplot as plt
@@ -391,8 +391,8 @@ axes[1].legend()
 axes[1].grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('training_history.png', dpi=150)
-print("\n✅ 학습 곡선 저장: training_history.png")
+plt.savefig('./CNN/training_history.png', dpi=150)
+print("\n✅ 학습 곡선 저장: ./CNN/training_history.png")
 
 # 최종 성능 출력
 final_val_acc = history2.history['val_accuracy'][-1]

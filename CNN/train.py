@@ -12,15 +12,15 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.callbacks import EarlyStopping
 
 # --- 1. 설정 ---
-BASE_PATH = '../assets'
+BASE_PATH = './assets'
 IMG_SIZE = 128  # [수정 1] 해상도를 128로 올림 (정확도 상승 요인)
 VALID_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp')
 AUGMENT_COUNT = 150 # [수정 2] 이미지 1장을 150장으로 불림 (필수!)
 
 FOLDER_CONFIG = {
-    'artifacts': './slot_artifacts.png',
-    'tablets': './slot_tablets.png',
-    'empty': './slot_empty.png'
+    'artifacts': './CNN/slot_artifacts.png',
+    'tablets': './CNN/slot_tablets.png',
+    'empty': './CNN/slot_empty.png'
 }
 
 # --- 2. 배경 이미지 로드 및 캐싱 ---
@@ -197,7 +197,7 @@ print(f"-> 클래스 개수: {len(np.unique(labels))}개")
 
 # [추가] 학습 데이터 샘플 저장
 import random
-os.makedirs('./debug_train_samples', exist_ok=True)
+os.makedirs('./CNN/debug_train_samples', exist_ok=True)
 
 unique_labels = np.unique(labels)
 for label in unique_labels:
@@ -208,16 +208,16 @@ for label in unique_labels:
     img_to_save = (data[sample_idx] * 255).astype(np.uint8)
     img_bgr = cv2.cvtColor(img_to_save, cv2.COLOR_RGB2BGR)
     
-    cv2.imwrite(f'./debug_train_samples/{label}_sample.png', img_bgr)
+    cv2.imwrite(f'./CNN/debug_train_samples/{label}_sample.png', img_bgr)
 
-print("학습 샘플 이미지 저장 완료: ./debug_train_samples/")
+print("학습 샘플 이미지 저장 완료: ./CNN/debug_train_samples/")
 
 # --- 4. 학습 준비 ---
 le = LabelEncoder()
 labels_enc = le.fit_transform(labels)
 labels_onehot = to_categorical(labels_enc)
 
-with open('classes.pickle', 'wb') as f:
+with open('./CNN/classes.pickle', 'wb') as f:
     pickle.dump(le.classes_, f)
 
 # 데이터 분리
@@ -251,5 +251,5 @@ history = model.fit(X_train, y_train,
                     validation_data=(X_val, y_val),
                     callbacks=[early_stop])
 
-model.save('sephiria_item_model.keras')
+model.save('./CNN/sephiria_item_model.keras')
 print("저장 완료!")
