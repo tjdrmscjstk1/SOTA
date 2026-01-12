@@ -5,19 +5,23 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 import os
 
-# --- 1. 설정 ---
-SCREENSHOT_PATH = './CNN/test1.png'
+# ========================================
+# 설정
+# ========================================
+SCREENSHOT_PATH = './CNN/test6.png'
 MODEL_PATH = './CNN/sephiria_item_model.keras'
 CLASSES_PATH = './CNN/classes.pickle'
 IMG_SIZE = 128
-
 BORDER_COLOR_BGR = (52, 32, 36)
 
 os.makedirs('./debug_test_rois', exist_ok=True)
 os.makedirs('./debug_test_processed', exist_ok=True)
 
-# --- 2. 석판 클래스 ---
+# ========================================
+# 유틸리티 함수
+# ========================================
 def load_tablet_classes(tablets_folder='./assets/tablets'):
+    """석판 클래스 목록 로드"""
     tablet_classes = set()
     if os.path.exists(tablets_folder):
         for filename in os.listdir(tablets_folder):
@@ -27,8 +31,8 @@ def load_tablet_classes(tablets_folder='./assets/tablets'):
     print(f"✅ 석판: {len(tablet_classes)}개")
     return tablet_classes
 
-# --- 3. NMS (중복 제거) ---
 def non_max_suppression(boxes, overlap_thresh=0.3):
+    """중복 슬롯 제거"""
     if len(boxes) == 0:
         return []
     
@@ -62,23 +66,25 @@ def non_max_suppression(boxes, overlap_thresh=0.3):
     
     return boxes[pick].tolist()
 
-# --- 4. 슬롯 찾기 (하이브리드: 테두리 + 반전 합체) ---
-# [수정 2] 그리드 인식을 위한 '하이브리드' 로직 적용
+# ========================================
+# 슬롯 검출
+# ========================================
 def find_inventory_slots(image):
     """
     해상도 적응형 슬롯 검출
+    - 테두리 색상 기반 마스크 생성
+    - 형태학적 연산으로 내부 채우기
+    - 하이브리드 윤곽선 검출 (테두리 + 반전)
     """
     print("\n=== 슬롯 검색 (적응형 하이브리드) ===")
     
     img_h, img_w = image.shape[:2]
     print(f"이미지 크기: {img_w}x{img_h}")
     
-    # [핵심] 이미지 크기 기반 슬롯 크기 추정
-    # 일반적으로 슬롯은 이미지 너비의 5-12% 정도
-    estimated_slot_size = img_w * 0.08  # 8% 기준
-    
-    min_size = int(estimated_slot_size * 0.7)  # 70%
-    max_size = int(estimated_slot_size * 1.5)  # 150%
+    # 이미지 크기 기반 슬롯 크기 추정
+    estimated_slot_size = img_w * 0.08
+    min_size = int(estimated_slot_size * 1.0)
+    max_size = int(estimated_slot_size * 2.0)
     
     print(f"슬롯 크기 범위: {min_size} ~ {max_size}px")
     
@@ -88,15 +94,33 @@ def find_inventory_slots(image):
     upper = np.array([min(255, c + tolerance) for c in BORDER_COLOR_BGR])
     
     mask = cv2.inRange(image, lower, upper)
+    cv2.imwrite('./CNN/debug_mask_raw.png', mask)
     
-    # [적응형] 커널 크기도 이미지 크기에 비례
-    kernel_size = max(3, int(img_w / 500))  # 500px당 1씩 증가
-    kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+    # 적응형 커널 크기
+    kernel_small = max(3, int(img_w / 400))
+    kernel_fill = max(5, int(img_w / 250))
+    kernel_s = np.ones((kernel_small, kernel_small), np.uint8)
+    kernel_f = np.ones((kernel_fill, kernel_fill), np.uint8)
+    
+    # 적응형 반복 횟수
+    iterations_close = max(2, int(img_w / 600))
+    iterations_fill = max(3, int(img_w / 400))
+    
+    print(f"커널: {kernel_small}x{kernel_small}, {kernel_fill}x{kernel_fill}")
+    print(f"반복: close={iterations_close}, fill={iterations_fill}")
+    
+    # 노이즈 제거 및 내부 채우기
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_s, iterations=iterations_close)
+    mask_filled = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_f, iterations=iterations_fill)
+    cv2.imwrite('./CNN/debug_mask_filled.png', mask_filled)
+    
+    # 반전 마스크 (검은 부분 = 슬롯 내부)
+    mask_inv = cv2.bitwise_not(mask_filled)
+    cv2.imwrite('./CNN/debug_mask_inv.png', mask_inv)
     
     candidates = []
 
-    # [방법 A] 테두리 기반
+    # 방법 A: 테두리 윤곽선 검출
     edges = cv2.Canny(mask, 50, 150)
     contours_A, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
@@ -105,13 +129,11 @@ def find_inventory_slots(image):
         x, y, w, h = cv2.boundingRect(cnt)
         ar = w / float(h) if h > 0 else 0
         
-        # [적응형] 동적 크기 필터
         if min_size < w < max_size and min_size < h < max_size and 0.75 < ar < 1.25:
             candidates.append([x, y, w, h])
             count_a += 1
 
-    # [방법 B] 마스크 반전
-    mask_inv = cv2.bitwise_not(mask)
+    # 방법 B: 반전 마스크 윤곽선 검출
     contours_B, _ = cv2.findContours(mask_inv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     count_b = 0
@@ -119,7 +141,6 @@ def find_inventory_slots(image):
         x, y, w, h = cv2.boundingRect(cnt)
         ar = w / float(h) if h > 0 else 0
         
-        # [적응형] 동적 크기 필터
         if min_size < w < max_size and min_size < h < max_size and 0.75 < ar < 1.25:
             candidates.append([x, y, w, h])
             count_b += 1
@@ -127,17 +148,17 @@ def find_inventory_slots(image):
     print(f"🔹 방법 A(테두리): {count_a}개")
     print(f"🔹 방법 B(반전): {count_b}개")
     
+    # 멀티스케일 폴백
     if len(candidates) == 0:
         print("⚠️ 슬롯을 못 찾았습니다.")
-        
-        # [디버깅] 멀티스케일 시도
         print("\n멀티스케일 검색 시도...")
+        
         for scale_factor in [0.6, 0.8, 1.0, 1.2, 1.5]:
             min_s = int(estimated_slot_size * scale_factor * 0.7)
             max_s = int(estimated_slot_size * scale_factor * 1.5)
             
             temp_candidates = []
-            for cnt in contours_A:
+            for cnt in contours_A + contours_B:
                 x, y, w, h = cv2.boundingRect(cnt)
                 if min_s < w < max_s and min_s < h < max_s:
                     temp_candidates.append([x, y, w, h])
@@ -148,17 +169,20 @@ def find_inventory_slots(image):
                 break
         
         if len(candidates) == 0:
-            cv2.imwrite('./CNN/debug_mask_border.png', mask)
+            print("-> 디버그 파일:")
+            print("   debug_mask_raw.png")
+            print("   debug_mask_filled.png")
+            print("   debug_mask_inv.png")
             return []
 
-    # [방법 C] 중복 제거
+    # 중복 제거
     final_slots = non_max_suppression(candidates, overlap_thresh=0.3)
     
     if isinstance(final_slots, np.ndarray):
         final_slots = final_slots.tolist()
     
-    # [적응형] 동적 정렬 간격
-    row_gap = max(10, int(estimated_slot_size * 0.2))  # 슬롯 크기의 20%
+    # 정렬 (위→아래, 좌→우)
+    row_gap = max(10, int(estimated_slot_size * 0.2))
     final_slots = sorted(final_slots, key=lambda s: (s[1] // row_gap, s[0]))
     
     print(f"✅ 최종: {len(final_slots)}개")
@@ -167,8 +191,6 @@ def find_inventory_slots(image):
     vis = image.copy()
     for i, (x, y, w, h) in enumerate(final_slots):
         cv2.rectangle(vis, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        
-        # [적응형] 텍스트 크기
         font_scale = max(0.3, img_w / 1000)
         cv2.putText(vis, str(i), (x+5, y+int(h*0.3)), 
                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 255), 2)
@@ -178,18 +200,20 @@ def find_inventory_slots(image):
 
     return final_slots
 
-# --- 5. TTA (추론 시 증강) ---
+# ========================================
+# TTA (Test Time Augmentation)
+# ========================================
 def predict_with_tta(model, roi, class_names, tablet_classes, n_augmentations=5):
+    """
+    증강 기반 예측으로 정확도 향상
+    - 석판: 90도 단위 회전
+    - 일반 아이템: 미세 회전 및 밝기 변화
+    """
     predictions = []
     
-    # [수정 3] 전처리 방식 변경 (NEAREST + preprocess_input)
     # 원본 예측
     roi_rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-    
-    # 리사이즈: INTER_NEAREST (도트 유지)
     roi_resized = cv2.resize(roi_rgb, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
-    
-    # 정규화: preprocess_input (-1 ~ 1 범위)
     roi_input = preprocess_input(roi_resized.astype(np.float32))[None, ...]
     
     pred_original = model.predict(roi_input, verbose=0)[0]
@@ -198,46 +222,45 @@ def predict_with_tta(model, roi, class_names, tablet_classes, n_augmentations=5)
     top_class = class_names[np.argmax(pred_original)]
     is_tablet = top_class in tablet_classes
     
-    # 증강 예측 (TTA)
+    # 증강 예측
     if is_tablet:
-        # 석판: 90도씩 회전
+        # 석판: 90도 단위 회전
         for angle in [90, 180, 270]:
             h, w = roi.shape[:2]
             M = cv2.getRotationMatrix2D((w/2, h/2), angle, 1)
             aug = cv2.warpAffine(roi, M, (w, h), borderMode=cv2.BORDER_REFLECT)
-
-            # [추가] 밝기 조절 (석판도 조명 타니까요!)
             brightness = np.random.randint(-20, 20)
             aug = np.clip(aug.astype(np.int16) + brightness, 0, 255).astype(np.uint8)
-
+            
             aug_rgb = cv2.cvtColor(aug, cv2.COLOR_BGR2RGB)
             aug_resized = cv2.resize(aug_rgb, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
             aug_input = preprocess_input(aug_resized.astype(np.float32))[None, ...]
-            
             predictions.append(model.predict(aug_input, verbose=0)[0])
+        
         tta_type = "Rotation"
     else:
-        # 일반 아이템: 미세 회전 및 밝기
+        # 일반 아이템: 미세 변화
         for _ in range(n_augmentations - 1):
             aug = roi.copy()
             angle = np.random.uniform(-5, 5)
             h, w = aug.shape[:2]
             M = cv2.getRotationMatrix2D((w/2, h/2), angle, 1)
             aug = cv2.warpAffine(aug, M, (w, h), borderMode=cv2.BORDER_REFLECT)
-            
             brightness = np.random.randint(-15, 15)
             aug = np.clip(aug.astype(np.int16) + brightness, 0, 255).astype(np.uint8)
             
             aug_rgb = cv2.cvtColor(aug, cv2.COLOR_BGR2RGB)
             aug_resized = cv2.resize(aug_rgb, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
             aug_input = preprocess_input(aug_resized.astype(np.float32))[None, ...]
-            
             predictions.append(model.predict(aug_input, verbose=0)[0])
+        
         tta_type = "Small"
     
     return np.mean(predictions, axis=0), roi_resized, tta_type
 
-# --- 메인 ---
+# ========================================
+# 메인 실행
+# ========================================
 print("=" * 60)
 model = load_model(MODEL_PATH)
 with open(CLASSES_PATH, 'rb') as f:
@@ -252,18 +275,18 @@ if frame is None:
 
 print(f"\n이미지: {frame.shape[1]}x{frame.shape[0]}")
 
-# 슬롯 자동 찾기 (하이브리드)
+# 슬롯 검출
 slots = find_inventory_slots(frame)
 
 if len(slots) == 0:
     print("❌ 슬롯 없음")
-    print("디버그: debug_mask_border.png 확인")
     exit()
 
 print(f"\n✅ {len(slots)}개 슬롯 발견")
-print("debug_slots_hybrid.png 확인")
 
-# 분석 및 시각화
+# ========================================
+# 아이템 분석
+# ========================================
 output_frame = frame.copy()
 
 print("\n" + "=" * 60)
@@ -290,20 +313,26 @@ for idx, (x, y, w, h) in enumerate(slots):
     confidence = prediction[pred_idx]
     label = class_names[pred_idx]
 
-    top3 = np.argsort(prediction)[-3:][::-1]
-    print(f"[{idx}] {label} ({confidence*100:.0f}%) [{tta_type}]")
+    # 출력 (50% 미만일 때만 Top-3)
+    if confidence < 0.5:
+        top3 = np.argsort(prediction)[-3:][::-1]
+        print(f"[{idx}] {label} ({confidence*100:.0f}%) [{tta_type}]")
+        print(f"     Top-3: ", end="")
+        for ti in top3:
+            print(f"{class_names[ti]}({prediction[ti]*100:.0f}%) ", end="")
+        print()
+    else:
+        print(f"[{idx}] {label} ({confidence*100:.0f}%) [{tta_type}]")
     
     # 시각화
     color = (0, 255, 0) if confidence > 0.5 else (0, 0, 255)
     cv2.rectangle(output_frame, (x, y), (x+w, y+h), color, 2)
-    
-    # 텍스트 배경 (가독성)
     cv2.rectangle(output_frame, (x, y-20), (x+100, y), (0, 0, 0), -1)
     cv2.putText(output_frame, label[:12], (x+2, y-5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
 cv2.imwrite('./CNN/inventory_result.png', output_frame)
-print("\n✅ 분석 완료! inventory_result.png 를 확인하세요.")
+print("\n✅ 분석 완료: inventory_result.png")
 
 cv2.imshow('Result', output_frame)
 cv2.waitKey(0)
